@@ -122,9 +122,8 @@ stg_commoncrawl_companies rows: 100,000
 
 ## 4. Database Schema (DDL)
 
-All DDL is located in:
+Full DDL scripts for all tables are available in the `sql/` directory.
 
-sql/init_db.sql
 
 Key tables:
 
@@ -508,6 +507,11 @@ dbt test
 Back in repo root:
 cd ~/projects/firmable-data-pipeline
 source venv/bin/activate
+
+### 9.9 IDE Used
+- macOS (Apple Silicon)
+- VS Code for editing Python / dbt / SQL
+- Terminal (zsh) for running Docker, dbt and Python commands
 
 # optional: enable LLM review
 export OPENAI_API_KEY="sk-..."         # not committed to git
