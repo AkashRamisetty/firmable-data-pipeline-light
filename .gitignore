@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# dbt
+target/
+dbt_packages/
+
+# Data / logs (not needed in repo)
+data/
+pgdata/
+logs/
+data/llm_match_logs.jsonl
+
+# Local env / secrets
+.env
+.env.*
+
+# macOS
+.DS_Store

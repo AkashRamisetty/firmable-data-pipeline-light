@@ -1,0 +1,12 @@
+pandas
+sqlalchemy
+psycopg2-binary
+requests
+beautifulsoup4
+warcio
+rapidfuzz
+prefect
+dbt-core
+dbt-postgres
+openai
+python-dotenv

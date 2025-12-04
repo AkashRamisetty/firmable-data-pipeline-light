@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: public
+    schema: public
+    tables:
+      - name: raw_abr
+
+models:
+  - name: stg_abr_entities
+    description: "Cleaned and standardised ABR entities from raw_abr."
+    columns:
+      - name: abn
+        description: "Australian Business Number; unique identifier per entity."
+        tests:
+          - not_null
+          - unique
+      - name: entity_name_norm
+        description: "Normalised entity name (uppercased, trimmed)."
+        tests:
+          - not_null
+      - name: state
+        description: "Australian state code."
+        tests:
+          - accepted_values:
+              values: ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "ACT", "NT"]
+      - name: postcode
+        description: "Australian postcode."
+        tests:
+          - not_null
+
+  - name: stg_commoncrawl_companies
+    description: "Cleaned and normalised company data from Common Crawl."
+    columns:
+      - name: commoncrawl_id
+        description: "Primary key from raw_commoncrawl."
+        tests:
+          - not_null
+          - unique
+      - name: company_name_norm
+        description: "Normalised company name derived from extracted_name."
+        tests:
+          - not_null
+      - name: domain
+        description: "Website domain."
+        tests:
+          - not_null
