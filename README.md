@@ -367,6 +367,34 @@ A typical LLM response (logged in data/llm_match_logs.jsonl) looks like:
   "reason": "The Common Crawl company name '167' and domain '167.172.14.0' do not match the ABR entity name 'ACN 651645000 PTY LTD' or its ABN. There is no clear connection between the IP address and the company name or ABN."
 }
 
+The LLM is called via the official Python client:
+response = openai_client.chat.completions.create(
+    model=OPENAI_MODEL,
+    messages=[
+        {
+            "role": "system",
+            "content": (
+                "You are an assistant that matches Australian companies "
+                "between website data and ABR records. Respond ONLY with JSON."
+            ),
+        },
+        {"role": "user", "content": prompt},
+    ],
+    temperature=0.1,
+)
+decision = json.loads(response.choices[0].message.content)
+
+Every (prompt, response) pair is logged to data/llm_match_logs.jsonl so you can:
+
+Inspect how the LLM is reasoning.
+
+Debug bad matches.
+
+Potentially use those JSON lines later as labelled data for a learned matcher.
+
+In the current run, the sampled data didn’t produce strong LLM-approved matches, but the pattern is implemented and ready to scale with better Common Crawl sampling / .au filtering.
+
+
 We parse the JSON and only accept matches where:
 
 is_match = true, and
@@ -487,22 +515,28 @@ export OPENAI_MODEL="gpt-4.1-mini"
 
 python src/entity_matching.py
 
-## 10. Statistics Summary
+## 10. Results Summary
 
-From my latest run:
+This project is wired up to real data volumes, but uses sampling in the matching step to keep things laptop-friendly.
 
-raw_abr rows: 19,735,506
+**Row counts (after running the pipeline locally):**
 
-stg_abr_entities rows: 19,735,506
+- `raw_abr`                   – 19,735,506 rows  
+- `stg_abr_entities`          – 19,735,506 rows  
+- `raw_commoncrawl`           – 100,000 rows (sampled from CC-MAIN-2025-13 index)  
+- `stg_commoncrawl_companies` – 100,000 rows  
+- `company_unified`           – 2 rows (demo matches written by `entity_matching.py`)
 
-raw_commoncrawl rows: 100,000
+**Why so few unified matches?**
 
-stg_commoncrawl_companies rows: 100,000
+- For this assessment I intentionally:
+  - Sampled only a tiny slice of ABR and Common Crawl (to keep runtime reasonable).
+  - Used very conservative fuzzy-match thresholds.
+  - Focused on demonstrating the **end-to-end design** and the **LLM disambiguation pattern**, not on tuning recall/precision at scale.
 
-company_unified rows: 2
-(these are from a small earlier demo run on synthetic data; the sampled real CC slice currently produces no additional high-confidence or LLM-approved matches due to minimal overlap between IP-style hostnames and ABR company names)
+With more time and a larger CC slice (and better `.au` domain filtering), the same pattern scales out to hundreds of thousands of websites.
 
-company_source_link rows: 4 (2 source rows per unified company)
+---
 
 ## 11. Design Choices & Trade-offs
 
@@ -532,19 +566,31 @@ Environment: macOS on Apple Silicon (M4), Docker Desktop, Python 3.11 virtual en
 
 ## 13. Future Improvements
 
-If productionised, I would:
+If I had more time/given enough resources or was taking this to production, I’d:
 
-Enhance Common Crawl company extraction by:
+Improve .au targeting in Common Crawl:
 
-Parsing HTML titles.
+Prefer URLs with domain suffix .au instead of raw IPs.
 
-Using schema.org / OpenGraph organisation metadata.
+Add a domain-level filter when loading raw_commoncrawl.
 
-Applying an NER model to detect organisation names.
+Enrich feature set for matching:
 
-Introduce blocking (e.g. state + first token of name) before fuzzy matching to scale matching to all 19.7M ABR records.
+Use URL path, HTML title, and page text (when available).
 
-Harden the LLM JSON parsing (strip code fences, validate schema, retry on failure).
+Add embeddings / semantic similarity on names + site content.
 
-Add orchestration (Airflow / Dagster) and CI for dbt and ETL scripts.
+Tune thresholds:
+
+Use a validation set to pick optimal fuzzy thresholds per entity type.
+
+Scale the LLM loop:
+
+Batch ambiguous pairs and call the LLM in parallel.
+
+Only send genuinely hard cases (e.g. scores in a narrow band).
+
+Persist metrics:
+
+Store match quality metrics and LLM decisions in a separate audit table.
 
